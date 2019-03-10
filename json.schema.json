@@ -1,0 +1,119 @@
+{
+    "title": "Configuration",
+    "type": "object",
+    "required": [
+        "endpoint",
+        "re-match",
+        "abort-on-error",
+        "debug",
+        "incremental",
+        "mapping"
+    ],
+    "properties": {
+        "endpoint": {
+            "type": "object",
+            "title": "URL Endpoint",
+            "required": [
+                "url",
+                "parameters"
+            ],
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "default": "https://",
+                    "title": "URL endpoint",
+                    "description": "URL Endpoint containing the list of URLs"
+                },
+                "parameters": {
+                    "type": "array",
+                    "title": "Parameters",
+                    "description": "Each GET param will be passed in URL",
+                    "items": {
+                        "type": "object",
+                        "title": "GET param",
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "title": "Key"
+                            },
+                            "value": {
+                                "type": "string",
+                                "title": "Value"
+                            }
+                        }
+                    },
+                    "default": [{ "api-key": "API_KEY" }, { "name": "export/" }]
+                }
+            }
+        },
+        "re-match": {
+            "type": "string",
+            "title": "Regex match",
+            "description": "Regular expression used to search for URLs",
+            "default": "\\<url\\>(.*?)\\<\/url\\>"
+        },
+        "abort-on-error": {
+            "type": "boolean",
+            "title": "Abort on error",
+            "description": "If true, extraction will fail on error the first time any error occurrs, best for debugging and testing configuration",
+            "default": false
+        },
+        "debug": {
+            "type": "boolean",
+            "title": "Debug mode",
+            "description": "Debug mode means there is about to be a lot of talking.",
+            "default": false
+        },
+        "incremental": {
+            "type": "boolean",
+            "title": "Incremental download",
+            "description": "Only download files with matching pattern (date in file name)",
+            "default": false
+        },
+        "mapping": {
+            "type": "array",
+            "title": "Output mapping",
+            "description": "Output mapping (if omitted, each file will be downloaded as a new table)",
+            "required": ["matching", "output", "date-comparison"],
+            "items": {
+                "type": "object",
+                "properties": {
+                    "matching": {
+                        "type": "string",
+                        "title": "Regex match:",
+                        "description": "Files matching regex pattern..."
+                    },
+                    "output": {
+                        "type": "string",
+                        "title": "Output table name (including trailing .csv)",
+                        "description": "... will be downloaded as..."
+                    },
+                    "date-search": {
+                        "type": "string",
+                        "title": "Date regex",
+                        "description": "... if this part of the filename is a date..."
+                    },
+                    "date-comparison": {
+                        "type": "string",
+                        "title": "Date comparison",
+                        "description": "... and it is...",
+                        "enum": [
+                            "",
+                            ">",
+                            "<",
+                            "=",
+                            "!="
+                        ],
+                        "default": ""
+                    },
+                    "date-condition": {
+                        "type": "integer",
+                        "title": "Date age",
+                        "description": "... than...",
+                        "default": -30
+                    }
+                }
+            }
+        }
+    }
+}
