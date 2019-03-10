@@ -89,7 +89,7 @@ def process_csv(fname,output,content):
         appending = True
     else:
         appending = False
-    print("Processing CSV file {0}".format(output))
+    if conf["debug"]: print("Processing CSV file {0}".format(output))
     with StringIO(content.decode("utf8")) as infile:
         csv_in = csv.reader(infile)
         ## Append or create new file and write
@@ -106,7 +106,25 @@ def process_csv(fname,output,content):
 
 ## TXT processor checks whether the format conforms with TSV, converts to CSV and then processes it via CSV processor
 def process_txt(fname,output,content):
-    pass
+    output = os.path.join(OUTPUT_DIR,output)
+    if os.path.exists(output):
+        appending = True
+    else:
+        appending = False
+    if conf["debug"]: print("Processing TXT file {0}".format(output))
+    with StringIO(content.decode("utf8")) as infile:
+        csv_in = csv.reader(infile,dialect="excel-tab")
+        ## Append or create new file and write
+        with open(output,"a" if appending else "w",newline='\n') as outfile:
+            csv_out = csv.writer(outfile,dialect="excel")
+            rownum = 0
+            for row in csv_in:
+                rownum+=1
+                if appending and rownum==1:
+                    ## Skip header
+                    continue
+                csv_out.writerow(row)
+        if conf["debug"]: print("Written {0} rows".format(rownum))
 
 ## List of accepted file types with proper handler
 typelist = {
