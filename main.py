@@ -21,7 +21,7 @@ import csv
 import os
 
 ## Output dir (set to /data/out/tables for KBC)
-OUTPUT_DIR = ""
+OUTPUT_DIR = "/data/out/tables"
 
 ## Return bytes ungzipped
 def ungzip(b):
