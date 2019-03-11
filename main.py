@@ -23,6 +23,9 @@ import os
 ## Output dir (set to /data/out/tables for KBC)
 OUTPUT_DIR = "/data/out/tables"
 
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+
 ## Return bytes ungzipped
 def ungzip(b):
     with BytesIO(b) as gzf:
