@@ -31,7 +31,7 @@ def ungzip(b):
 
 
 ## Read config file
-with open("conf.json","r") as conf_file:
+with open("/data/config.json" if os.path.exists("/data/config.json") else "conf.json","r") as conf_file:
     conf = json.load(conf_file)["parameters"]
 
 ## Get mapping from configuration matching the link
