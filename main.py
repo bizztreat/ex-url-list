@@ -179,10 +179,13 @@ for link in links:
         if conf["debug"]: print("No output mapping found for \'{0}\'. Skipping".format(url))
         continue
     else:
-        if get_date_conforms(link):
-            final_links.append((link,url,urlp))
+        if conf["incremental"]:
+            if get_date_conforms(link):
+               final_links.append((link,url,urlp))
+            else:
+                if conf["debug"]: print("File \'{0}\' does not meet increment condition and will be skipped.".format(url))
         else:
-            if conf["debug"]: print("File \'{0}\' does not meet increment condition and will be skipped.".format(url))
+            final_links.append((link,url,urlp))
 
 print("Will process {0} links".format(len(final_links)))
 
