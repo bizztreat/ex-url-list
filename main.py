@@ -32,7 +32,7 @@ def ungzip(b):
 
 ## Read config file
 with open("conf.json","r") as conf_file:
-    conf = json.load(conf_file)
+    conf = json.load(conf_file)["parameters"]
 
 ## Get mapping from configuration matching the link
 def get_output_mapping(link):
