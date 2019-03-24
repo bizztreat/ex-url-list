@@ -142,6 +142,21 @@ def process_txt(fname,output,content,link):
                 if appending and rownum==1:
                     ## Skip header
                     continue
+                if rownum==1:
+                    ## Add columns to header
+                    if conf["generate-pk"]:
+                        row.append(conf["primary-key"])
+                    if conf["add-filename"]:
+                        row.append("original_file")
+                else:
+                    ## Add appended columns data
+                    if conf["generate-pk"]:
+                        pk = "{0}-{1}".format(link,rownum-1)
+                        if conf["hash-pk"]:
+                            pk = md5(pk.encode("utf8")).hexdigest().upper()
+                        row.append(pk)
+                    if conf["add-filename"]:
+                            row.append(link)
                 csv_out.writerow(row)
         if conf["debug"]: print("Written {0} rows".format(rownum))
 
