@@ -7,9 +7,37 @@
         "abort-on-error",
         "debug",
         "incremental",
-        "mapping"
+        "mapping",
+        "generate-pk",
+        "primary-key",
+        "hash-pk",
+        "add-filename"
     ],
     "properties": {
+        "generate-pk": {
+            "type": "boolean",
+            "title": "Generate PK for each record",
+            "description": "Generate Primary Key from file URL and line number",
+            "default": false
+        },
+        "primary-key": {
+            "type": "string",
+            "default": "pk",
+            "title": "PK Column name",
+            "description": "Name of the column containing the generated Primary Key"
+        },
+        "hash-pk": {
+            "type": "boolean",
+            "title": "Hash generated PK",
+            "description": "Hash generated Primary Key",
+            "default": false
+        },
+        "add-filename": {
+            "type": "boolean",
+            "title": "Add filename as column",
+            "description": "Add original file name as a column 'original_file'",
+            "default": false
+        },
         "endpoint": {
             "type": "object",
             "title": "URL Endpoint",

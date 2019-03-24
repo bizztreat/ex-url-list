@@ -11,6 +11,7 @@ from io import BytesIO, StringIO
 from urllib.parse import urlparse, urljoin
 from dateutil.parser import parse as dateparse
 from datetime import datetime, timedelta
+from hashlib import md5
 import json
 import requests
 import re
@@ -86,7 +87,7 @@ def get_date_conforms(link):
 
 ## Basic processors for different file types
 ## CSV processor simply appends to an existing csv file or creates a new one should it not already exist
-def process_csv(fname,output,content):
+def process_csv(fname,output,content,link):
     output = os.path.join(OUTPUT_DIR,output)
     if os.path.exists(output):
         appending = True
@@ -104,11 +105,26 @@ def process_csv(fname,output,content):
                 if appending and rownum==1:
                     ## Skip header
                     continue
+                if rownum==1:
+                    ## Add columns to header
+                    if conf["generate-pk"]:
+                        row.append(conf["primary-key"])
+                    if conf["add-filename"]:
+                        row.append("original_file")
+                else:
+                    ## Add appended columns data
+                    if conf["generate-pk"]:
+                        pk = "{0}-{1}".format(link,rownum-1)
+                        if conf["hash-pk"]:
+                            pk = md5(pk.encode("utf8")).hexdigest().upper()
+                        row.append(pk)
+                    if conf["add-filename"]:
+                            row.append(link)
                 csv_out.writerow(row)
         if conf["debug"]: print("Written {0} rows".format(rownum))
 
 ## TXT processor checks whether the format conforms with TSV, converts to CSV and then processes it via CSV processor
-def process_txt(fname,output,content):
+def process_txt(fname,output,content,link):
     output = os.path.join(OUTPUT_DIR,output)
     if os.path.exists(output):
         appending = True
@@ -191,7 +207,6 @@ print("Will process {0} links".format(len(final_links)))
 
 ## Download every link from the list
 for link,url,urlp in final_links:
-    
     ## Check whether gzipped and supported
     if os.path.splitext(urlp.path)[1].lower()==".gz":
         compressed = True
@@ -234,5 +249,4 @@ for link,url,urlp in final_links:
     else:
         data  = resp.text
     
-    typelist[ftype](basename,outname,data)
-
+    typelist[ftype](basename,outname,data,url)
