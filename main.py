@@ -12,6 +12,7 @@ from urllib.parse import urlparse, urljoin
 from dateutil.parser import parse as dateparse
 from datetime import datetime, timedelta
 from hashlib import md5
+from time import sleep
 import json
 import requests
 import re
@@ -249,7 +250,21 @@ for link,url,urlp in final_links:
             sys.exit(1)
 
     ## Download the file
-    resp = session.get(link)
+    attempt_no = 1
+    while True:
+        try:
+            resp = session.get(link)
+            break
+        except Exception as e:
+            print("Error occurred when downloading link {0}".format(link))
+            print(e)
+            if attempt_no == 5:
+                print("Already tried too many times, giving up...")
+                raise Exception("Too many errors")
+            print("Retrying in 5 seconds...")
+            sleep(5)
+            attempt_no+=1
+            continue
 
     ## Check response for non-ok state
     if resp.status_code != 200:
