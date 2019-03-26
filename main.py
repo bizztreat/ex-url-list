@@ -39,6 +39,12 @@ def ungzip(b):
 with open("/data/config.json" if os.path.exists("/data/config.json") else "conf.json","r") as conf_file:
     conf = json.load(conf_file)["parameters"]
 
+## Print debug info
+if conf["incremental"]:
+    for mapping in conf["mapping"]:
+        output_date = (datetime.today() + timedelta(days=int(mapping["date-condition"]))).replace(hour=0,minute=0,second=0,microsecond=0)
+        print("Will download only files with date {0}{1} conforming expression {2}".format(mapping["date-comparison"],output_date,mapping["matching"]))
+
 ## Get mapping from configuration matching the link
 def get_output_mapping(link):
     for mapping in conf["mapping"]:
@@ -73,7 +79,7 @@ def get_date_conforms(link):
     m = get_output_mapping(link)
     d = get_mapping_date(link)
     if m==None or d==None: return None
-    comp_date = (datetime.today() + timedelta(days=int(m["date-condition"])))
+    comp_date = (datetime.today() + timedelta(days=int(mapping["date-condition"]))).replace(hour=0,minute=0,second=0,microsecond=0)
     if m["date-comparison"]=="<":
         return d < comp_date
     elif m["date-comparison"]==">":
