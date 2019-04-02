@@ -21,9 +21,16 @@ import html
 import gzip
 import csv
 import os
+from time import time
 
 ## Output dir (set to /data/out/tables for KBC)
 OUTPUT_DIR = "/data/out/tables"
+
+## Set default time limit, 20 minutes
+TIME_LIMIT = 1200
+
+## List of already processed links
+LINKS_PROCESSED = []
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
@@ -173,116 +180,143 @@ typelist = {
     ".txt": process_txt
 }
 
+def get_link_list(session):
+    global LINKS_PROCESSED
+    ## Initial call params
+    params = {}
+    for p in conf["endpoint"]["parameters"]:
+        params = {**params, **p}
+
+
+    url = conf["endpoint"]["url"]
+
+    resp = session.get(url,params=params)
+
+    ## Check for response status and exit if non-200
+    if resp.status_code != 200:
+        print("Error making primary request:")
+        print(resp.status_code)
+        sys.exit(1)
+
+    ## Find all links based on re specified in config
+    ## The links look basically like:
+    ## <url>LINK</url>
+    links = re.findall(conf["re-match"],resp.text)
+
+    ## But they might be different some time
+    if len(links)==0:
+        print("Error - No URLs match given expression")
+        sys.exit(1)
+
+    ## Output number of links for feedback reasons
+    print("Found {0} links in total".format(len(links)))
+
+    final_links = []
+    for link in links:
+        link = html.unescape(link)
+        urlp = urlparse(link)
+        url = urlp.scheme + "://" + urlp.netloc + urlp.path
+        # print("Path: {0}\ntranslated: {1}\nOutput: {2}\nDate: {3}\nConforms: {4}".format(urlp.path,url,get_output_filename(url),get_mapping_date(url),get_date_conforms(url)))
+        if (get_output_mapping(url) == None):
+            if conf["debug"]: print("No output mapping found for \'{0}\'. Skipping".format(url))
+            continue
+        elif url in LINKS_PROCESSED:
+            ## Already processed
+            continue
+        else:
+            if conf["incremental"]:
+                if get_date_conforms(link):
+                    final_links.append((link,url,urlp))
+                else:
+                    #if conf["debug"]: print("File \'{0}\' does not meet increment condition and will be skipped.".format(url))
+                    pass
+            else:
+                final_links.append((link,url,urlp))
+    return final_links
+
+
+def process_all_links(session,final_links):
+    global LINKS_PROCESSED
+    print("Will process {0} links".format(len(final_links)))
+    start_time = time()
+    completed = True
+    ## Download every link from the list
+    for link,url,urlp in final_links:
+        if time()-start_time > TIME_LIMIT:
+            completed = False
+            print("Timeout of {0} seconds reached, starting over.".format(TIME_LIMIT))
+            print("So far, {0} links were processed".format(len(LINKS_PROCESSED)))
+            break
+        if url in LINKS_PROCESSED: continue
+        LINKS_PROCESSED.append(url)
+        ## Check whether gzipped and supported
+        if os.path.splitext(urlp.path)[1].lower()==".gz":
+            compressed = True
+            ftype = os.path.splitext(urlp.path[:-3])[1]
+            basename = os.path.split(urlp.path[:-3])[1]
+        else:
+            compressed = False
+            ftype = urlp.path.splitext(urlp.path)
+            basename = os.path.split(urlp.path)[1]
+
+        if ftype not in typelist.keys():
+            print("\'{0}\' is an unsupported type and cannot be processed. Path: \'{1}\'".format(ftype,urlp.path))
+            if conf["abort-on-error"]:
+                print("This is fatal. If you prefer not to exit on first error, set \'abort-on-error\' option to \'false\'.")
+                sys.exit(1)
+        
+        ## Find output mapping from config
+        outname = get_output_filename(basename)
+
+        ## No matching re
+        if outname == None:
+            print("File \'{0}\' does not match any of the output mapping setting.".format(basename))
+            if conf["abort-on-error"]:
+                print("This is fatal. If you prefer not to exit on first error, set \'abort-on-error\' option to \'false\'.")
+                sys.exit(1)
+
+        ## Download the file
+        attempt_no = 1
+        while True:
+            try:
+                resp = session.get(link)
+                break
+            except Exception as e:
+                print("Error occurred when downloading link {0}".format(link))
+                print(e)
+                if attempt_no == 5:
+                    print("Already tried too many times, giving up...")
+                    raise Exception("Too many errors")
+                print("Retrying in 5 seconds...")
+                sleep(5)
+                attempt_no+=1
+                continue
+
+        ## Check response for non-ok state
+        if resp.status_code != 200:
+            print("Link: \'{0}\' returned status code {1}.".format(link,resp.status_code))
+            if conf["abort-on-error"]:
+                print("This is fatal. If you prefer not to exit on first error, set \'abort-on-error\' option to \'false\'.")
+                sys.exit(1)
+        
+        ## Un-gzip received bytes (if needed) and call proper handler
+        if compressed:
+            data = ungzip(resp.content)
+        else:
+            data  = resp.text
+        
+        typelist[ftype](basename,outname,data,url)
+    
+    return completed
 
 ## Create requests session to keep cookies etc.
 session = requests.session()
 
-## Initial call params
-params = {}
-for p in conf["endpoint"]["parameters"]:
-    params = {**params, **p}
-
-
-url = conf["endpoint"]["url"]
-
-resp = session.get(url,params=params)
-
-## Check for response status and exit if non-200
-if resp.status_code != 200:
-    print("Error making primary request:")
-    print(resp.status_code)
-    sys.exit(1)
-
-## Find all links based on re specified in config
-## The links look basically like:
-## <url>LINK</url>
-links = re.findall(conf["re-match"],resp.text)
-
-## But they might be different some time
-if len(links)==0:
-    print("Error - No URLs match given expression")
-    sys.exit(1)
-
-## Output number of links for feedback reasons
-print("Found {0} links in total".format(len(links)))
-
-final_links = []
-
-for link in links:
-    link = html.unescape(link)
-    urlp = urlparse(link)
-    url = urlp.scheme + "://" + urlp.netloc + urlp.path
-    # print("Path: {0}\ntranslated: {1}\nOutput: {2}\nDate: {3}\nConforms: {4}".format(urlp.path,url,get_output_filename(url),get_mapping_date(url),get_date_conforms(url)))
-    if (get_output_mapping(url) == None):
-        if conf["debug"]: print("No output mapping found for \'{0}\'. Skipping".format(url))
+while True:
+    ## Get links without already processed ones
+    final_links = get_link_list(session)
+    ## Process all new links, returns true if all was done, False on time limit reach
+    if process_all_links(session,final_links):
+        break
+    else:
         continue
-    else:
-        if conf["incremental"]:
-            if get_date_conforms(link):
-               final_links.append((link,url,urlp))
-            else:
-                if conf["debug"]: print("File \'{0}\' does not meet increment condition and will be skipped.".format(url))
-        else:
-            final_links.append((link,url,urlp))
-
-print("Will process {0} links".format(len(final_links)))
-
-## Download every link from the list
-for link,url,urlp in final_links:
-    ## Check whether gzipped and supported
-    if os.path.splitext(urlp.path)[1].lower()==".gz":
-        compressed = True
-        ftype = os.path.splitext(urlp.path[:-3])[1]
-        basename = os.path.split(urlp.path[:-3])[1]
-    else:
-        compressed = False
-        ftype = urlp.path.splitext(urlp.path)
-        basename = os.path.split(urlp.path)[1]
-
-    if ftype not in typelist.keys():
-        print("\'{0}\' is an unsupported type and cannot be processed. Path: \'{1}\'".format(ftype,urlp.path))
-        if conf["abort-on-error"]:
-            print("This is fatal. If you prefer not to exit on first error, set \'abort-on-error\' option to \'false\'.")
-            sys.exit(1)
-    
-    ## Find output mapping from config
-    outname = get_output_filename(basename)
-
-    ## No matching re
-    if outname == None:
-        print("File \'{0}\' does not match any of the output mapping setting.".format(basename))
-        if conf["abort-on-error"]:
-            print("This is fatal. If you prefer not to exit on first error, set \'abort-on-error\' option to \'false\'.")
-            sys.exit(1)
-
-    ## Download the file
-    attempt_no = 1
-    while True:
-        try:
-            resp = session.get(link)
-            break
-        except Exception as e:
-            print("Error occurred when downloading link {0}".format(link))
-            print(e)
-            if attempt_no == 5:
-                print("Already tried too many times, giving up...")
-                raise Exception("Too many errors")
-            print("Retrying in 5 seconds...")
-            sleep(5)
-            attempt_no+=1
-            continue
-
-    ## Check response for non-ok state
-    if resp.status_code != 200:
-        print("Link: \'{0}\' returned status code {1}.".format(link,resp.status_code))
-        if conf["abort-on-error"]:
-            print("This is fatal. If you prefer not to exit on first error, set \'abort-on-error\' option to \'false\'.")
-            sys.exit(1)
-    
-    ## Un-gzip received bytes (if needed) and call proper handler
-    if compressed:
-        data = ungzip(resp.content)
-    else:
-        data  = resp.text
-    
-    typelist[ftype](basename,outname,data,url)
