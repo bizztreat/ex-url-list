@@ -32,6 +32,8 @@ TIME_LIMIT = 1200
 ## List of already processed links
 LINKS_PROCESSED = []
 
+PROCESSED_TABLES = {}
+
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
@@ -111,11 +113,24 @@ def process_csv(fname,output,content,link):
     with StringIO(content.decode("utf8")) as infile:
         csv_in = csv.reader(infile)
         ## Append or create new file and write
-        with open(output,"a" if appending else "w",newline='\n') as outfile:
+        with open(output,"a" if appending else "w",newline='\n',encoding="utf-8") as outfile:
             csv_out = csv.writer(outfile)
             rownum = 0
             for row in csv_in:
                 rownum+=1
+                if rownum==1:
+                    if not output in PROCESSED_TABLES:
+                        PROCESSED_TABLES[output] = len(row)
+                    else:
+                        if len(row)>PROCESSED_TABLES[output]:
+                            print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
+                            print("Omitting last columns")
+                            row = row[:PROCESSED_TABLES[output]]
+                        elif len(row)<PROCESSED_TABLES[output]:
+                            print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
+                            print("Filling with nulls")
+                            for appended_row_id in range(PROCESSED_TABLES[output]-len(row)):
+                                row.append("")
                 if appending and rownum==1:
                     ## Skip header
                     continue
@@ -135,7 +150,7 @@ def process_csv(fname,output,content,link):
                     if conf["add-filename"]:
                             row.append(link)
                 ## Encode row to 'utf-8'
-                row = list(map(str.encode,row))
+                #row = list(map(str.encode,row))
                 csv_out.writerow(row)
         if conf["debug"]: print("Written {0} rows".format(rownum))
 
@@ -150,11 +165,24 @@ def process_txt(fname,output,content,link):
     with StringIO(content.decode("utf8")) as infile:
         csv_in = csv.reader(infile,dialect="excel-tab")
         ## Append or create new file and write
-        with open(output,"a" if appending else "w",newline='\n') as outfile:
+        with open(output,"a" if appending else "w",newline='\n',encoding="utf-8") as outfile:
             csv_out = csv.writer(outfile,dialect="excel")
             rownum = 0
             for row in csv_in:
                 rownum+=1
+                if rownum==1:
+                    if not output in PROCESSED_TABLES:
+                        PROCESSED_TABLES[output] = len(row)
+                    else:
+                        if len(row)>PROCESSED_TABLES[output]:
+                            print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
+                            print("Omitting last columns")
+                            row = row[:PROCESSED_TABLES[output]]
+                        elif len(row)<PROCESSED_TABLES[output]:
+                            print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
+                            print("Filling with nulls")
+                            for appended_row_id in range(PROCESSED_TABLES[output]-len(row)):
+                                row.append("")
                 if appending and rownum==1:
                     ## Skip header
                     continue
@@ -174,7 +202,8 @@ def process_txt(fname,output,content,link):
                     if conf["add-filename"]:
                             row.append(link)
                 ## Encode row to 'utf-8'
-                row = list(map(str.encode,row))
+                #row = list(map(str.encode,row))
+                #print("Number of columns: {0}".format(len(row)))
                 csv_out.writerow(row)
         if conf["debug"]: print("Written {0} rows".format(rownum))
 
