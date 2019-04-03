@@ -134,6 +134,8 @@ def process_csv(fname,output,content,link):
                         row.append(pk)
                     if conf["add-filename"]:
                             row.append(link)
+                ## Encode row to 'utf-8'
+                row = list(map(str.encode,row))
                 csv_out.writerow(row)
         if conf["debug"]: print("Written {0} rows".format(rownum))
 
@@ -171,6 +173,8 @@ def process_txt(fname,output,content,link):
                         row.append(pk)
                     if conf["add-filename"]:
                             row.append(link)
+                ## Encode row to 'utf-8'
+                row = list(map(str.encode,row))
                 csv_out.writerow(row)
         if conf["debug"]: print("Written {0} rows".format(rownum))
 
