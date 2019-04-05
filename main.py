@@ -52,7 +52,12 @@ with open("/data/config.json" if os.path.exists("/data/config.json") else "conf.
 if conf["incremental"]:
     for mapping in conf["mapping"]:
         output_date = (datetime.today() + timedelta(days=int(mapping["date-condition"]))).replace(hour=0,minute=0,second=0,microsecond=0)
-        print("Will download only files with date {0}{1} conforming expression {2}".format(mapping["date-comparison"],output_date,mapping["matching"]))
+        if mapping["date-comparison"]!="BETWEEN":
+            print("Will download only files with date {0}{1} conforming expression {2}".format(mapping["date-comparison"],output_date,mapping["matching"]))
+        else:
+            upper_date = (datetime.today() + timedelta(days=int(mapping["date-condition-upper"]))).replace(hour=0,minute=0,second=0,microsecond=0)
+            print("Will download only files with date BETWEEN {0} AND {1} conforming expression {2}".format(output_date,upper_date,mapping["matching"]))
+
 
 ## Get mapping from configuration matching the link
 def get_output_mapping(link):
@@ -88,7 +93,7 @@ def get_date_conforms(link):
     m = get_output_mapping(link)
     d = get_mapping_date(link)
     if m==None or d==None: return None
-    comp_date = (datetime.today() + timedelta(days=int(mapping["date-condition"]))).replace(hour=0,minute=0,second=0,microsecond=0)
+    comp_date = (datetime.today() + timedelta(days=int(m["date-condition"]))).replace(hour=0,minute=0,second=0,microsecond=0)
     if m["date-comparison"]=="<":
         return d < comp_date
     elif m["date-comparison"]==">":
@@ -97,6 +102,9 @@ def get_date_conforms(link):
         return d == comp_date
     elif m["date-comparison"]=="!=":
         return d != comp_date
+    elif m["date-comparison"]=="BETWEEN":
+        upper_date = (datetime.today() + timedelta(days=int(m["date-condition-upper"]))).replace(hour=0,minute=0,second=0,microsecond=0)
+        return (d >= comp_date and d <= upper_date)
     else:
         return False
 
@@ -121,19 +129,19 @@ def process_csv(fname,output,content,link):
                 if rownum==1:
                     if not output in PROCESSED_TABLES:
                         PROCESSED_TABLES[output] = len(row)
-                    else:
-                        if len(row)>PROCESSED_TABLES[output]:
-                            print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
-                            print("Omitting last columns")
-                            row = row[:PROCESSED_TABLES[output]]
-                        elif len(row)<PROCESSED_TABLES[output]:
-                            print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
-                            print("Filling with nulls")
-                            for appended_row_id in range(PROCESSED_TABLES[output]-len(row)):
-                                row.append("")
                 if appending and rownum==1:
                     ## Skip header
                     continue
+                if len(row)>PROCESSED_TABLES[output]:
+                    print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
+                    print("Omitting last columns")
+                    row = row[:PROCESSED_TABLES[output]]
+                elif len(row)<PROCESSED_TABLES[output]:
+                    print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
+                    print("Filling with NULLs")
+                    actual_columns = len(row)
+                    for appended_row_id in range(PROCESSED_TABLES[output]-actual_columns):
+                        row.append("")
                 if rownum==1:
                     ## Add columns to header
                     if conf["generate-pk"]:
@@ -173,16 +181,16 @@ def process_txt(fname,output,content,link):
                 if rownum==1:
                     if not output in PROCESSED_TABLES:
                         PROCESSED_TABLES[output] = len(row)
-                    else:
-                        if len(row)>PROCESSED_TABLES[output]:
-                            print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
-                            print("Omitting last columns")
-                            row = row[:PROCESSED_TABLES[output]]
-                        elif len(row)<PROCESSED_TABLES[output]:
-                            print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
-                            print("Filling with nulls")
-                            for appended_row_id in range(PROCESSED_TABLES[output]-len(row)):
-                                row.append("")
+                if len(row)>PROCESSED_TABLES[output]:
+                    print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
+                    print("Omitting last columns")
+                    row = row[:PROCESSED_TABLES[output]]
+                elif len(row)<PROCESSED_TABLES[output]:
+                    print("Number of columns missmatch, expected {0}, got {1}".format(PROCESSED_TABLES[output],len(row)))
+                    print("Filling with NULLs")
+                    actual_columns = len(row)
+                    for appended_row_id in range(PROCESSED_TABLES[output]-actual_columns):
+                        row.append("")
                 if appending and rownum==1:
                     ## Skip header
                     continue

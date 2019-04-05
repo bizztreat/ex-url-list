@@ -130,7 +130,8 @@
                             ">",
                             "<",
                             "=",
-                            "!="
+                            "!=",
+                            "BETWEEN"
                         ],
                         "default": ""
                     },
@@ -139,6 +140,12 @@
                         "title": "Date age",
                         "description": "... than...",
                         "default": -30
+                    },
+                    "date-condition-upper": {
+                        "type": "integer",
+                        "title": "Date age (upper condition)",
+                        "description": "Applies only for BETWEEN comparison",
+                        "default": 0
                     }
                 }
             }
