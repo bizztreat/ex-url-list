@@ -259,7 +259,7 @@ def get_link_list(session):
         url = urlp.scheme + "://" + urlp.netloc + urlp.path
         # print("Path: {0}\ntranslated: {1}\nOutput: {2}\nDate: {3}\nConforms: {4}".format(urlp.path,url,get_output_filename(url),get_mapping_date(url),get_date_conforms(url)))
         if (get_output_mapping(url) == None):
-            if conf["debug"]: print("No output mapping found for \'{0}\'. Skipping".format(url))
+            #if conf["debug"]: print("No output mapping found for \'{0}\'. Skipping".format(url))
             continue
         elif url in LINKS_PROCESSED:
             ## Already processed
