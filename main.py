@@ -48,6 +48,10 @@ def ungzip(b):
 with open("/data/config.json" if os.path.exists("/data/config.json") else "conf.json","r") as conf_file:
     conf = json.load(conf_file)["parameters"]
 
+if conf["debug"]:
+    print("Applied configuration:")
+    print(conf)
+
 ## Print debug info
 if conf["incremental"]:
     for mapping in conf["mapping"]:
