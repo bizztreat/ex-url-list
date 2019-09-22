@@ -26,8 +26,8 @@ from time import time
 ## Output dir (set to /data/out/tables for KBC)
 OUTPUT_DIR = "/data/out/tables"
 
-## Set default time limit, 20 minutes
-TIME_LIMIT = 1200
+## Set default time limit, 10 minutes
+TIME_LIMIT = 600
 
 ## List of already processed links
 LINKS_PROCESSED = []
