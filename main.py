@@ -235,7 +235,20 @@ def get_link_list(session):
 
     url = conf["endpoint"]["url"]
 
-    resp = session.get(url, params=params)
+    __try_number = 0
+    while True:
+        try:
+            resp = session.get(url, params=params)
+            break
+        except ConnectionError as e:
+            __try_number += 1
+            print("ConnectionError occurred", e)
+            if __try_number < 10:
+                print("Waiting few seconds before retry.")
+                sleep(10)
+                continue
+            else:
+                raise Exception("Too many retries when getting link list")
 
     ## Check for response status and exit if non-200
     if resp.status_code != 200:
