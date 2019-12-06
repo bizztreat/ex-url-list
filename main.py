@@ -240,7 +240,8 @@ def get_link_list(session):
         try:
             resp = session.get(url, params=params)
             break
-        except ConnectionError as e:
+        ## TODO: Too broad Exception handling
+        except Exception as e:
             __try_number += 1
             print("ConnectionError occurred", e)
             if __try_number < 10:
