@@ -23,8 +23,8 @@ import csv
 import os
 from time import time
 
-## Output dir (set to /data/out/tables for KBC)
-OUTPUT_DIR = "/data/out/tables"
+# ## Output dir (set to /data/out/tables for KBC)
+OUTPUT_DIR = sys.argv[1] if len(sys.argv) == 2 else "/data/out/tables"
 
 ## Set default time limit, 10 minutes
 TIME_LIMIT = 600
@@ -45,7 +45,7 @@ def ungzip(b):
 
 
 ## Read config file
-with open("/data/config.json" if os.path.exists("/data/config.json") else "conf.json", "r") as conf_file:
+with open("/data/config.json" if os.path.exists("/data/config.json") else "./config.json", "r") as conf_file:
     conf = json.load(conf_file)["parameters"]
 
 if conf["debug"]:
@@ -111,6 +111,27 @@ def get_date_conforms(link):
         return (d >= comp_date and d <= upper_date)
     else:
         return False
+
+def generate_dates_between(start, end):
+    """Generate list of dates in range from start to end
+    Arguments:
+        start {datetime or str} -- Start datetime or str in format %Y-%m-%d
+        end {[type]} -- End datetime or str in format %Y-%m-%d
+    Returns:
+        list -- List of dates
+    """
+    if not isinstance(start, datetime):
+        start = datetime.strptime(start, "%Y-%m-%d")
+    if not isinstance(end, datetime):
+        end = datetime.strptime(end, "%Y-%m-%d")
+    if start > end:
+        _s = start
+        start = end
+        end = start
+    size = (end - start).days
+    dates = [end - timedelta(days=i) for i in range(size)]
+
+    return dates
 
 
 ## Basic processors for different file types
@@ -235,32 +256,44 @@ def get_link_list(session):
 
     url = conf["endpoint"]["url"]
 
-    __try_number = 0
-    while True:
-        try:
-            resp = session.get(url, params=params)
-            break
-        ## TODO: Too broad Exception handling
-        except Exception as e:
-            __try_number += 1
-            print("ConnectionError occurred", e)
-            if __try_number < 10:
-                print("Waiting few seconds before retry.")
-                sleep(10)
-                continue
-            else:
-                raise Exception("Too many retries when getting link list")
+    if "{date}" in url and conf["incremental"]:
+        dates = generate_dates_between(output_date, upper_date)
+    else:
+        dates = [""]
 
-    ## Check for response status and exit if non-200
-    if resp.status_code != 200:
-        print("Error making primary request:")
-        print(resp.status_code)
-        sys.exit(1)
+    links = []
+    for date in dates:
+        if isinstance(date, datetime):
+            date = date.strftime("%Y-%m-%d")
+        current_url = url.replace("{date}", date)
 
-    ## Find all links based on re specified in config
-    ## The links look basically like:
-    ## <url>LINK</url>
-    links = re.findall(conf["re-match"], resp.text)
+        __try_number = 0
+        while True:
+            try:
+                resp = session.get(current_url, params=params)
+                break
+            ## TODO: Too broad Exception handling
+            except Exception as e:
+                __try_number += 1
+                print("ConnectionError occurred", e)
+                if __try_number < 10:
+                    print("Waiting few seconds before retry.")
+                    sleep(10)
+                    continue
+                else:
+                    raise Exception("Too many retries when getting link list")
+
+        ## Check for response status and exit if non-200
+        if resp.status_code != 200:
+            print("Error making primary request:")
+            print(resp.status_code)
+            sys.exit(1)
+
+        ## Find all links based on re specified in config
+        ## The links look basically like:
+        ## <url>LINK</url>
+        current_links = re.findall(conf["re-match"], resp.text)
+        links.extend(current_links)
 
     ## But they might be different some time
     if len(links)==0:
